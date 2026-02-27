@@ -1,13 +1,7 @@
 {
-  "account": {
-    "phone": "",
-    "password": "",
-    "country_code": "+86",
-    "login_method": "qrcode"
-  },
   "owner": {
-    "user_id": "5f6a7b8c9d0e111122223333",
-    "shared_secret": "replace_with_long_random_secret"
+    "user_id": "在此填写主人的小红书 userId",
+    "shared_secret": "在此填写一个长随机字符串作为自定义密钥"
   },
   "operator": {
     "listen_addr": ":8081"
