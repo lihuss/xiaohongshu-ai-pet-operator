@@ -11,33 +11,13 @@ import (
 
 type Config struct {
 	OwnerUserID       string
-	OwnerSharedSecret string
 	MCPBaseURL        string
-	ListenAddr        string
-	Account           AccountConfig
-}
-
-type AccountConfig struct {
-	Phone       string
-	Password    string
-	CountryCode string
-	LoginMethod string
 }
 
 type fileConfig struct {
-	Account struct {
-		Phone       string `json:"phone"`
-		Password    string `json:"password"`
-		CountryCode string `json:"country_code"`
-		LoginMethod string `json:"login_method"`
-	} `json:"account"`
 	Owner struct {
-		UserID       string `json:"user_id"`
-		SharedSecret string `json:"shared_secret"`
+		UserID string `json:"user_id"`
 	} `json:"owner"`
-	Operator struct {
-		ListenAddr string `json:"listen_addr"`
-	} `json:"operator"`
 	MCP struct {
 		BaseURL string `json:"base_url"`
 	} `json:"mcp"`
@@ -61,29 +41,15 @@ func Load(path string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		OwnerUserID:       strings.TrimSpace(fc.Owner.UserID),
-		OwnerSharedSecret: strings.TrimSpace(fc.Owner.SharedSecret),
-		MCPBaseURL:        strings.TrimRight(strings.TrimSpace(fc.MCP.BaseURL), "/"),
-		ListenAddr:        strings.TrimSpace(fc.Operator.ListenAddr),
-		Account: AccountConfig{
-			Phone:       strings.TrimSpace(fc.Account.Phone),
-			Password:    strings.TrimSpace(fc.Account.Password),
-			CountryCode: strings.TrimSpace(fc.Account.CountryCode),
-			LoginMethod: strings.TrimSpace(fc.Account.LoginMethod),
-		},
+		OwnerUserID: strings.TrimSpace(fc.Owner.UserID),
+		MCPBaseURL:  strings.TrimRight(strings.TrimSpace(fc.MCP.BaseURL), "/"),
 	}
 
 	if cfg.MCPBaseURL == "" {
 		cfg.MCPBaseURL = "http://127.0.0.1:18060"
 	}
-	if cfg.ListenAddr == "" {
-		cfg.ListenAddr = ":8081"
-	}
 	if cfg.OwnerUserID == "" {
-		return nil, errors.New("owner.user_id is required")
-	}
-	if cfg.OwnerSharedSecret == "" {
-		return nil, errors.New("owner.shared_secret is required")
+		return nil, errors.New("owner.user_id is required (must be the owner account user_id, not the pet account)")
 	}
 	return cfg, nil
 }

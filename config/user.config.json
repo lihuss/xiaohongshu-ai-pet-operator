@@ -1,10 +1,6 @@
 {
   "owner": {
-    "user_id": "在此填写主人的小红书 userId",
-    "shared_secret": "在此填写一个长随机字符串作为自定义密钥"
-  },
-  "operator": {
-    "listen_addr": ":8081"
+    "user_id": "在此填写【主人账号】user_id（不是宠物账号）"
   },
   "mcp": {
     "base_url": "http://127.0.0.1:18060"
