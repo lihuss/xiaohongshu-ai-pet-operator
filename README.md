@@ -1,59 +1,61 @@
 # xiaohongshu-ai-pet-operator
 
-一个放在 `xiaohongshu-mcp` 前面的安全控制层，目标是让 AI 宠物只听“主人账号”的命令。
+Security control layer in front of `xiaohongshu-mcp` so the AI pet only executes commands from one bound owner account.
 
-## 核心安全设计
+## Security model
 
-- 主人身份只看 `owner_user_id`（唯一 ID），不看昵称。
-- 主人改名不影响控制权，只要 `actor_user_id` 不变就仍然是主人。
-- 默认禁止任何“改主人”指令：`change_owner / transfer_owner / reset_owner / bind_owner`。
-- 每个命令都要携带 HMAC 签名（`OWNER_SHARED_SECRET`），避免被伪造。
-- 每个命令都要携带 `timestamp + nonce`，防重放攻击。
-- 命令白名单执行，未知命令全部拒绝。
+- Owner identity is bound to immutable `owner_user_id`, not nickname.
+- Nickname changes do not affect ownership if `owner_user_id` stays the same.
+- Owner-change commands are blocked by default:
+  - `change_owner`
+  - `transfer_owner`
+  - `reset_owner`
+  - `bind_owner`
+- Every command requires HMAC signature with `OWNER_SHARED_SECRET`.
+- Every command requires `timestamp + nonce` to prevent replay attacks.
+- Only allowlisted commands can be executed.
 
-## 目录说明
+## Project layout
 
-- `cmd/server`: 启动入口
+- `cmd/server`: entrypoint
 - `internal/server`: HTTP API
-- `internal/security`: 签名与防重放
-- `internal/owner`: 主人识别与高危命令封禁
-- `internal/xhs`: 调用 `xiaohongshu-mcp` 的白名单路由
+- `internal/security`: signature and anti-replay
+- `internal/owner`: owner lock and forbidden commands
+- `internal/xhs`: allowlisted proxy calls to `xiaohongshu-mcp`
 
-## 环境变量
+## Environment variables
 
-复制 `.env.example` 自行填值：
+- `OWNER_USER_ID`: required owner unique id (XHS userId)
+- `OWNER_SHARED_SECRET`: required signing secret (32+ random chars recommended)
+- `MCP_BASE_URL`: upstream MCP API base URL, default `http://127.0.0.1:18060`
+- `LISTEN_ADDR`: this service address, default `:8081`
 
-- `OWNER_USER_ID`: 主人唯一 ID（小红书 userId）
-- `OWNER_SHARED_SECRET`: 签名密钥（建议 32+ 随机字符）
-- `MCP_BASE_URL`: `xiaohongshu-mcp` 地址，默认 `http://127.0.0.1:18060`
-- `LISTEN_ADDR`: 本服务监听地址，默认 `:8081`
+Use `.env.example` as a template.
 
-## 启动
+## Run
 
 ```bash
 go run ./cmd/server
 ```
 
-## 发命令（PowerShell）
-
-先生成签名请求体：
+## Sign request (PowerShell)
 
 ```powershell
 .\scripts\sign-command.ps1 `
-  -ActorUserId "你的owner_user_id" `
+  -ActorUserId "your_owner_user_id" `
   -Command "check_login_status" `
-  -Secret "你的OWNER_SHARED_SECRET" `
+  -Secret "your_OWNER_SHARED_SECRET" `
   -ArgsJson "{}"
 ```
 
-再调用服务：
+Then call:
 
 ```powershell
-$body = .\scripts\sign-command.ps1 -ActorUserId "你的owner_user_id" -Command "check_login_status" -Secret "你的OWNER_SHARED_SECRET"
+$body = .\scripts\sign-command.ps1 -ActorUserId "your_owner_user_id" -Command "check_login_status" -Secret "your_OWNER_SHARED_SECRET"
 Invoke-RestMethod -Uri "http://127.0.0.1:8081/v1/command" -Method Post -Body $body -ContentType "application/json"
 ```
 
-## 已开放命令
+## Allowlisted commands
 
 - `check_login_status`
 - `my_profile`
@@ -66,5 +68,5 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8081/v1/command" -Method Post -Body $bo
 - `post_comment`
 - `reply_comment`
 
-要新增命令，请修改 `internal/xhs/client.go` 的 `allowlist`。
+To add commands, edit `allowlist` in `internal/xhs/client.go`.
 
