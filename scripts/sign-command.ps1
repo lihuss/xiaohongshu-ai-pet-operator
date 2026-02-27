@@ -1,9 +1,23 @@
 param(
   [Parameter(Mandatory = $true)][string]$ActorUserId,
   [Parameter(Mandatory = $true)][string]$Command,
-  [Parameter(Mandatory = $true)][string]$Secret,
-  [string]$ArgsJson = "{}"
+  [string]$Secret = "",
+  [string]$ArgsJson = "{}",
+  [string]$ConfigPath = ".\\config\\user.config.json"
 )
+
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($Secret)) {
+  if (!(Test-Path $ConfigPath)) {
+    throw "Missing config file: $ConfigPath"
+  }
+  $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+  $Secret = [string]$cfg.owner.shared_secret
+}
+if ([string]::IsNullOrWhiteSpace($Secret)) {
+  throw "owner.shared_secret is empty"
+}
 
 $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $nonce = [guid]::NewGuid().ToString("N")
@@ -27,4 +41,3 @@ $payload = @{
 }
 
 $payload | ConvertTo-Json -Depth 10
-

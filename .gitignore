@@ -1,4 +1,6 @@
-.env
 *.exe
 bin/
-
+logs/
+run-local.ps1
+third_party/xiaohongshu-mcp/logs/
+third_party/xiaohongshu-mcp/run-local.ps1

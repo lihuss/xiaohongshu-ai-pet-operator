@@ -1,0 +1,19 @@
+{
+  "account": {
+    "phone": "",
+    "password": "",
+    "country_code": "+86",
+    "login_method": "qrcode"
+  },
+  "owner": {
+    "user_id": "5f6a7b8c9d0e111122223333",
+    "shared_secret": "replace_with_long_random_secret"
+  },
+  "operator": {
+    "listen_addr": ":8081"
+  },
+  "mcp": {
+    "base_url": "http://127.0.0.1:18060"
+  }
+}
+

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := config.Load("config/user.config.json")
 	if err != nil {
 		log.Fatalf("load config failed: %v", err)
 	}
@@ -34,4 +34,3 @@ func main() {
 		log.Fatalf("server failed: %v", err)
 	}
 }
-
