@@ -100,7 +100,9 @@ go build -o bin/xhs-pet ./cmd/mcp/main.go
 
 ### 5. 加载 Skill 提示词
 
-将 `SKILL.md` 的内容作为系统提示词（System Prompt）或对话开头提示词输入给 AI 模型，使其具备宠物人格与行为规则。
+打开 `~/.gemini/skills` ，创建一个新文件夹并命名为 `xiaohongshu_ai_pet` ，将 SKILL.md 放进其中。
+
+或将 `SKILL.md` 的内容作为系统提示词（System Prompt）或对话开头提示词输入给 AI 模型，使其具备宠物人格与行为规则。
 
 ### 6. 登录宠物账号
 
