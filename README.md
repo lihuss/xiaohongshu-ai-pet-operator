@@ -71,13 +71,15 @@ cd xiaohongshu-ai-pet-operator
 
 ### 3. 编译 MCP 插件
 
-`bash
-# Windows
-go build -o bin/xhs-pet.exe ./cmd/mcp/main.go
 
+# Windows
+```bash
+go build -o bin/xhs-pet.exe ./cmd/mcp/main.go
+```
 # macOS / Linux
+```bash
 go build -o bin/xhs-pet ./cmd/mcp/main.go
-`
+```
 
 ### 4. 注册到 AI 客户端
 
