@@ -1,83 +1,140 @@
-# 小红书 AI 宠物 (xiaohongshu-ai-pet)
+﻿# xiaohongshu-ai-pet-operator
 
-本项目把小红书账号接入 MCP，让 Gemini / Claude 成为“宠物大脑”，通过对话自主刷小红书。
+通过 MCP 协议将小红书账号接入 Gemini / Claude，让 AI 模型以自主宠物的角色操作小红书，完成浏览、互动与发布。
 
-## 1. 双账号模型（重要）
+## 功能概述
 
-- 主人账号（Owner）：只负责发命令与身份识别，必须填写 `owner.user_id`。
-- 宠物账号（Pet）：实际登录并执行搜索、发帖、评论等动作。
-- 结论：`owner.user_id` 不能为空，且必须是**主人账号**，不是宠物账号。
+- **自主浏览**：AI 主动获取推荐流或按主题搜索内容。
+- **自主互动**：AI 对笔记发表评论、回复评论，风格由人格设定驱动。
+- **内容发布**：AI 可代表宠物账号发布笔记。
+- **时长控制**：支持软时长预算，临近到点时 AI 自动完成当前动作后收尾，避免强制中断。
+- **缓停机制**：收到停止指令后优先完成进行中的动作，再输出总结。
+- **双账号隔离**：主人账号仅用于身份识别与指令来源验证，宠物账号执行全部操作。
 
-## 2. Skill 思路（大脑自主，不是机械脚本）
+## 架构说明
 
-- 自主性来自 Gemini/Claude：它们决定看什么、怎么互动、何时收尾。
-- “刷 5 分钟”是**软时长预算**，不是定时器强杀。
-- 到时间或收到停止指令时，执行**缓刹**：
-  - 不再开启新互动
-  - 完成当前评论/回复动作
-  - 输出简短总结后停下
-- 避免急刹导致“回复写到一半被终止”。
+`text
+[Gemini / Claude]
+      │  对话 + MCP 工具调用
+      ▼
+[xhs-pet MCP 插件]  ← 本项目编译产物
+      │  HTTP
+      ▼
+[xiaohongshu-mcp 底层服务]  ← third_party/xiaohongshu-mcp
+      │  Chromium DevTools Protocol
+      ▼
+[可见浏览器 (headless=false)]
+      │
+      ▼
+[小红书 宠物账号]
+`
 
-## 3. 配置文件
+- MCP 插件以 StdIO 方式被 Claude Desktop / Gemini 客户端调用。
+- 底层服务在插件首次被调用时自动启动，进程退出时自动清理。
+- 端口动态分配，避免冲突。
 
-编辑 [config/user.config.json](config/user.config.json)：
+## 前置条件
 
-```json
+- Go 1.21+
+- Google Chrome 或 Chromium（底层服务驱动浏览器）
+- 支持 MCP 的 AI 客户端，如 [Claude Desktop](https://claude.ai/download)
+- 两个小红书账号：一个作为主人账号，一个作为宠物账号
+
+## 快速开始
+
+### 1. 克隆项目
+
+`bash
+git clone https://github.com/your-org/xiaohongshu-ai-pet-operator.git
+cd xiaohongshu-ai-pet-operator
+`
+
+### 2. 配置主人账号
+
+编辑 `config/user.config.json`：
+
+`json
 {
   "owner": {
-    "user_id": "主人账号 user_id（必填，不是宠物账号）"
+    "user_id": "<主人账号的小红书 user_id>"
   },
   "mcp": {
     "base_url": "http://127.0.0.1:18060"
   }
 }
-```
+`
 
-字段说明：
-- `owner.user_id`：宠物识别主人消息和命令的唯一标识。
-- `mcp.base_url`：底层服务地址，默认值即可。
+- `owner.user_id`：填写**主人账号**的 user_id，用于宠物识别指令来源，不能填宠物账号。
+- `mcp.base_url`：底层服务监听地址，保持默认即可。
 
-## 4. 编译 MCP 插件
+> 获取 user_id：登录小红书网页版，进入个人主页，URL 中 `/user/profile/` 后的字符串即为 user_id。
 
-```powershell
+### 3. 编译 MCP 插件
+
+`bash
+# Windows
 go build -o bin/xhs-pet.exe ./cmd/mcp/main.go
-```
 
-## 5. 接入 Gemini / Claude
+# macOS / Linux
+go build -o bin/xhs-pet ./cmd/mcp/main.go
+`
 
-将编译产物注册为 StdIO MCP Server。
+### 4. 注册到 AI 客户端
 
-Claude Desktop 示例（`%APPDATA%\Claude\claude_desktop_config.json`）：
+**Claude Desktop**（`%APPDATA%\Claude\claude_desktop_config.json`）：
 
-```json
+`json
 {
   "mcpServers": {
     "xhs-pet": {
-      "command": "C:\\你的项目路径\\bin\\xhs-pet.exe",
+      "command": "C:\\path\\to\\bin\\xhs-pet.exe",
       "args": []
     }
   }
 }
-```
+`
 
-## 6. 对话内登录（无需单独跑命令）
+修改后重启 Claude Desktop。
 
-- 插件启动后会自动拉起底层引擎，并打开可见浏览器（`headless=false`）。
-- 在 Gemini / Claude 对话里先调用 `ensure_pet_login`：
-  - 若已登录：直接返回可用状态
-  - 若未登录：触发登录流程，用户在弹窗浏览器扫码登录宠物账号
+### 5. 加载 Skill 提示词
 
-## 7. 建议的 Skill 启动流程
+将 `SKILL.md` 的内容作为系统提示词（System Prompt）或对话开头提示词输入给 AI 模型，使其具备宠物人格与行为规则。
 
-1) 调用 `pet_skill_profile` 获取人格与行为准则
-2) 调用 `ensure_pet_login` 确认宠物账号登录
-3) 调用 `pet_autonomy_begin`（可带 `duration_minutes`）
-4) 期间循环调用 `pet_autonomy_status`，临近时长主动收尾
-5) 用户中途想停时，调用 `pet_autonomy_stop`，按缓刹策略结束
+### 6. 登录宠物账号
 
-## 8. 运行特性
+在 AI 对话中发送任意启动指令，AI 会自动调用 `ensure_pet_login`。若宠物账号尚未登录，底层服务会打开浏览器窗口，扫码登录宠物账号即可。登录状态持久化保存，后续会话无需重复扫码。
 
-- 无需手动先启动脚本：Gemini/Claude 调用 MCP 时自动拉起底层引擎。
-- 会话结束自动释放：MCP 进程退出时会清理子进程。
-- 动态端口分配：避免固定端口冲突。
+### 7. 开始使用
 
+直接在对话中向 AI 下达指令，例如：
+
+`
+给你刷五分钟小红书，走可爱萌宠路线。
+`
+
+`
+帮我搜一下最近流行的猫咪视频，看到有趣的就评论一下。
+`
+
+`
+先别刷了，停一下。
+`
+
+AI 会根据 `SKILL.md` 中的行为规则自主执行，并周期性汇报进展。
+
+## 项目结构
+
+`
+cmd/mcp/          MCP 插件入口
+cmd/server/       独立 HTTP 服务入口（可选）
+config/           用户配置文件
+internal/         核心逻辑（配置、模型、安全、XHS 客户端）
+third_party/xiaohongshu-mcp/  底层浏览器自动化服务
+SKILL.md          AI 宠物技能提示词
+`
+
+## 注意事项
+
+- 本项目仅供学习与个人研究使用，请勿用于商业目的或违反小红书服务条款的行为。
+- 宠物账号的所有操作均以真实账号身份执行，请对发布内容负责。
+- 建议使用专用宠物账号，不要使用主要个人账号。
